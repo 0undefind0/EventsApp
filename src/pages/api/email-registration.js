@@ -3,7 +3,7 @@ import fs from 'fs';
 
 
 function buildPath() {
-    return path.join(process.cwd(), 'data', 'data.json');
+    return path.join(process.cwd(), 'tmp', 'data.json');
 }
 
 function extractData(filePath) {
