@@ -3,7 +3,17 @@ import fs from 'fs';
 
 
 function buildPath() {
-    return path.join(process.cwd(), 'tmp', 'data.json');
+    const filePath = '/tmp/data.json';  // Path for Vercel temporary storage
+
+    if (fs.existsSync(filePath)) {
+        console.log(`${filePath} exists`);
+        return filePath;
+    } else {
+        console.log(`${filePath} does not exist`);
+        const oldFilePath = path.join(process.cwd(), 'tmp', 'data.json');
+        console.log(`Returning new file path: ${oldFilePath}`);
+        return oldFilePath;
+    }
 }
 
 function extractData(filePath) {
