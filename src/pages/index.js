@@ -2,9 +2,10 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Inter } from 'next/font/google'
 import { HomePage } from '@/components/home/home-page.jsx'
+import clientPromise from "../../libs/mongodb";
 const inter = Inter({ subsets: ['latin'] })
 
-export default function Home( {data} ) {
+export default function Home( {data, isConnected} ) {
   return (
     <div>
       <Head>
@@ -14,6 +15,14 @@ export default function Home( {data} ) {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
+      {isConnected ? (
+          <h2 className="subtitle">You are connected to MongoDB</h2>
+        ) : (
+          <h2 className="subtitle">
+            You are NOT connected to MongoDB. Check the <code>README.md</code>{' '}
+            for instructions.
+          </h2>
+      )}
       <HomePage data={data}/>
     </div>
   )
@@ -22,10 +31,24 @@ export default function Home( {data} ) {
 
 export async function getServerSideProps() {
   const { events_categories } = await import('/tmp/data.json');
+  try {
+    await clientPromise;
 
-  return {
+    return {
       props: {
         data: events_categories,
+        isConnected: true
       }
+    }
+  } catch (e) {
+    console.error(e)
+
+    return {
+      props: {
+        data: events_categories,
+        isConnected: false
+      }
+    }
   }
+
 }

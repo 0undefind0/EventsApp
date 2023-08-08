@@ -1,66 +1,58 @@
-import path from 'path';
-import fs from 'fs';
+import clientPromise from '../../../libs/mongodb';
 
-
-function buildPath() {
-    const filePath = '/tmp/data.json';  // Path for Vercel temporary storage
-
-    if (fs.existsSync(filePath)) {
-        console.log(`${filePath} exists`);
-        return filePath;
-    } else {
-        console.log(`${filePath} does not exist`);
-        const oldFilePath = path.join(process.cwd(), 'tmp', 'data.json');
-        console.log(`Returning new file path: ${oldFilePath}`);
-        return oldFilePath;
-    }
-}
-
-function extractData(filePath) {
-    const jsonData = fs.readFileSync(filePath);
-    const data = JSON.parse(jsonData);
-    return data;
-}
-
-
-export default function handler(req, res) {
+/**
+ * Handles HTTP requests to register an email for an event.
+ * @param {Object} req - The HTTP request object.
+ * @param {Object} res - The HTTP response object.
+ * @returns {Object} The HTTP response object with a status code and a JSON message.
+ */
+export default async function handler(req, res) {
     const { method } = req;
 
-    const filePath = buildPath();
-    const { events_categories, allEvents } = extractData(filePath);
+    try {
+        const client = await clientPromise;
+        const db = client.db("eventsapp");
 
-    if (!allEvents) {
-        return res.status(404).json({
-            status: 404,
-            message: 'Events data not found',
-        });
-    }
 
-    if (method === 'POST') {
-        const { email, eventId } = req.body;
+        // Check if the database exists by listing collections
+        const collections = await db.listCollections().toArray();
+        const collectionNames = collections.map(collection => collection.name);
 
-        if (!email | !email.includes('@')) {
-            res.status(422).json({ message: 'Invalid email address' });
+        if (!collectionNames.includes("all_events")) {
+            console.error("Could not find the database collection");
+
+            return res.status(500).json({
+                message: 'Could not find the database collection',
+            });
         }
 
-        const newAllEvents = allEvents.map((ev) => {
-            if (ev.id === eventId) {
-                if (ev.emails_registered.includes(email)) {
-                    res.status(409).json({ message: 'This email has already been registered' });
-                    return ev;
-                }
-                return {
-                    ...ev,
-                    emails_registered: [...ev.emails_registered, email],
-                };
+
+        if (method === 'POST') {
+            const { email, eventId } = req.body;
+
+            // Validate email format
+            if (!email | !email.includes('@')) {
+                res.status(422).json({ message: 'Invalid email address' });
             }
-            return ev;
-        });
 
-        fs.writeFileSync(filePath, JSON.stringify({ events_categories, allEvents: newAllEvents }));
+            // Search in db
+            const collection = await db.collection("all_events");
+            
+            // Check if email already exists
+            let emailInEvent = await collection.findOne( {title: "EdTech World Summit 2022", emails_registered: {$in: [email]}} );
+            if (emailInEvent) {
+                res.status(409).json({ message: 'This email has already been registered' });
+                return
+            }
 
-        res.status(201).json({
-                message: `You have been registered successfully with the email: ${email} for the event: ${eventId}`,
+            // Add email to db
+            collection.updateOne( {id: eventId}, { $push: { emails_registered: email } } )
+
+            res.status(201).json({
+                    message: `You have been registered successfully with the email: ${email} for the event: ${eventId}`,
             });
+        }
+    } catch (err) {
+        res.status(500).json({ message: err.message });
     }
 }
