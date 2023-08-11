@@ -1,5 +1,5 @@
 Website Deployed on Vercel:
-https://events-4l2sbq64j-0undefind0.vercel.app/
+https://events-app-beta-five.vercel.app/
 
 ## Future Features
 1. Database (Mongodb Atlas)
